@@ -505,10 +505,12 @@ $paymentMethods = [
                                 </div>
                                 <div>
                                     <label class="block text-xs text-gray-500 mb-1">Punto de Emision</label>
+                                    <?php
+                                    $defaultEmissionPointId = $invoice['emission_point_id'] ?? ($emissionPoints[0]['id'] ?? null);
+                                    ?>
                                     <select name="emission_point_id" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-shalom-primary/20 focus:border-shalom-primary bg-white">
-                                        <option value="">Seleccionar</option>
                                         <?php foreach (($emissionPoints ?? []) as $ep): ?>
-                                        <option value="<?= e((string) $ep['id']) ?>" <?= (int)($invoice['emission_point_id'] ?? 0) === (int)$ep['id'] ? 'selected' : '' ?>><?= e(($currentLocation['sri_establishment_code'] ?? '001') . '-' . $ep['code']) ?> - <?= e($ep['code'] === '001' ? 'Principal' : 'Secundario') ?></option>
+                                        <option value="<?= e((string) $ep['id']) ?>" <?= (int)$defaultEmissionPointId === (int)$ep['id'] ? 'selected' : '' ?>><?= e(($currentLocation['sri_establishment_code'] ?? '001') . '-' . $ep['code']) ?> - <?= e($ep['code'] === '001' ? 'Principal' : 'Secundario') ?></option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>

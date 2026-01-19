@@ -1,0 +1,29 @@
+{
+    "name": "shalom-dental",
+    "version": "1.0.0",
+    "description": "Sistema de Gestión Odontológica - Shalom Dental",
+    "private": true,
+    "scripts": {
+        "dev": "tailwindcss -i ./src/css/app.css -o ./public/assets/css/app.css --watch",
+        "build": "tailwindcss -i ./src/css/app.css -o ./public/assets/css/app.css",
+        "build:prod": "NODE_ENV=production tailwindcss -i ./src/css/app.css -o ./public/assets/css/app.css --minify",
+        "build:all": "npm run build:prod && npm run js:minify",
+        "js:minify": "terser public/assets/js/app.js -o public/assets/js/app.min.js -c -m",
+        "clean": "rm -rf public/assets/css/app.css public/assets/js/app.min.js",
+        "watch": "npm run dev"
+    },
+    "devDependencies": {
+        "autoprefixer": "^10.4.20",
+        "postcss": "^8.4.49",
+        "tailwindcss": "^3.4.19",
+        "terser": "^5.37.0"
+    },
+    "browserslist": [
+        "> 1%",
+        "last 2 versions",
+        "not dead"
+    ],
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}

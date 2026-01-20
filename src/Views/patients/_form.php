@@ -650,14 +650,20 @@ function patientForm(config) {
 
             var self = this;
             try {
-                // Create FormData and add all form fields
-                const formData = new FormData();
+                // Create FormData from the form to ensure full payload (CSRF, method override, etc.)
+                const formElement = this.$el.tagName === 'FORM' ? this.$el : this.$el.querySelector('form');
+                if (!formElement) {
+                    console.error('Form element not found');
+                    this.isSubmitting = false;
+                    this.showToast('Error interno. Intente nuevamente.', 'error');
+                    return;
+                }
 
-                // Add CSRF token from the form
-                const csrfInput = this.$el.querySelector('input[name="_csrf_token"]');
-                if (csrfInput) {
-                    formData.set('_csrf_token', csrfInput.value);
-                } else {
+                const formData = new FormData(formElement);
+
+                // Add CSRF token header for middleware compatibility
+                const csrfInput = formElement.querySelector('input[name="_csrf_token"]');
+                if (!csrfInput) {
                     console.error('CSRF token input not found in form');
                     this.isSubmitting = false;
                     this.showToast('Error de seguridad. Recargue la página e intente nuevamente.', 'error');
@@ -691,8 +697,10 @@ function patientForm(config) {
                         body: formData,
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest',
-                            'Accept': 'application/json'
+                            'Accept': 'application/json',
+                            'X-CSRF-Token': csrfInput.value
                         },
+                        credentials: 'same-origin',
                         signal: controller.signal
                     });
 

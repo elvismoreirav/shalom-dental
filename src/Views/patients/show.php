@@ -50,6 +50,27 @@
     </div>
 </div>
 
+<div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+    <?php if (can('clinical.records.view')): ?>
+    <a href="/patients/<?= e((string) ($patient['id'] ?? 0)) ?>/clinical-record" class="bg-white border border-gray-100 rounded-lg shadow-sm p-5 hover:border-gray-200 transition">
+        <div class="text-sm text-gray-500">Historial clínico</div>
+        <div class="text-lg font-semibold text-gray-900">Ver / Editar</div>
+    </a>
+    <?php endif; ?>
+    <?php if (can('clinical.odontogram.view')): ?>
+    <a href="/patients/<?= e((string) ($patient['id'] ?? 0)) ?>/odontogram" class="bg-white border border-gray-100 rounded-lg shadow-sm p-5 hover:border-gray-200 transition">
+        <div class="text-sm text-gray-500">Odontograma</div>
+        <div class="text-lg font-semibold text-gray-900">Abrir</div>
+    </a>
+    <?php endif; ?>
+    <?php if (can('clinical.treatment_plans.view')): ?>
+    <a href="/patients/<?= e((string) ($patient['id'] ?? 0)) ?>/treatment-plans" class="bg-white border border-gray-100 rounded-lg shadow-sm p-5 hover:border-gray-200 transition">
+        <div class="text-sm text-gray-500">Planes de tratamiento</div>
+        <div class="text-lg font-semibold text-gray-900">Gestionar</div>
+    </a>
+    <?php endif; ?>
+</div>
+
 <?= $this->include('patients._files', [
     'files' => $files ?? [],
     'patientId' => $patient['id'] ?? 0,

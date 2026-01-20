@@ -10,6 +10,10 @@ use App\Core\Response;
 use App\Core\Middleware\AuthMiddleware;
 use App\Core\Middleware\LocationMiddleware;
 use App\Core\Middleware\PermissionMiddleware;
+use App\Core\Middleware\CsrfMiddleware;
+use App\Modules\Config\Controllers\AppointmentTypeController;
+use App\Modules\Config\Controllers\MaterialController;
+use App\Modules\Config\Controllers\ServiceCategoryController;
 
 /** @var Router $router */
 
@@ -56,11 +60,80 @@ $router->group(['middleware' => [AuthMiddleware::class, LocationMiddleware::clas
       ->middleware(PermissionMiddleware::class)
       ->permission('config.users.edit');
 
-    $router->get('/config/appointment-types', function () {
-        return Response::view('config.appointment-types.index', ['title' => 'Tipos de Cita']);
-    })->name('config.appointment-types.index')
-      ->middleware(PermissionMiddleware::class)
-      ->permission('config.appointment_types.view');
+    $router->get('/config/appointment-types', [AppointmentTypeController::class, 'index'])
+        ->name('config.appointment-types.index')
+        ->middleware(PermissionMiddleware::class)
+        ->permission('config.appointment_types.view');
+
+    $router->get('/config/appointment-types/create', [AppointmentTypeController::class, 'create'])
+        ->name('config.appointment-types.create')
+        ->middleware(PermissionMiddleware::class)
+        ->permission('config.appointment_types.manage');
+
+    $router->post('/config/appointment-types', [AppointmentTypeController::class, 'store'])
+        ->name('config.appointment-types.store')
+        ->middleware([PermissionMiddleware::class, CsrfMiddleware::class])
+        ->permission('config.appointment_types.manage');
+
+    $router->get('/config/appointment-types/{id}/edit', [AppointmentTypeController::class, 'edit'])
+        ->name('config.appointment-types.edit')
+        ->middleware(PermissionMiddleware::class)
+        ->permission('config.appointment_types.manage');
+
+    $router->put('/config/appointment-types/{id}', [AppointmentTypeController::class, 'update'])
+        ->name('config.appointment-types.update')
+        ->middleware([PermissionMiddleware::class, CsrfMiddleware::class])
+        ->permission('config.appointment_types.manage');
+
+    $router->get('/config/service-categories', [ServiceCategoryController::class, 'index'])
+        ->name('config.service-categories.index')
+        ->middleware(PermissionMiddleware::class)
+        ->permission('config.service_categories.view');
+
+    $router->get('/config/service-categories/create', [ServiceCategoryController::class, 'create'])
+        ->name('config.service-categories.create')
+        ->middleware(PermissionMiddleware::class)
+        ->permission('config.service_categories.manage');
+
+    $router->post('/config/service-categories', [ServiceCategoryController::class, 'store'])
+        ->name('config.service-categories.store')
+        ->middleware([PermissionMiddleware::class, CsrfMiddleware::class])
+        ->permission('config.service_categories.manage');
+
+    $router->get('/config/service-categories/{id}/edit', [ServiceCategoryController::class, 'edit'])
+        ->name('config.service-categories.edit')
+        ->middleware(PermissionMiddleware::class)
+        ->permission('config.service_categories.manage');
+
+    $router->put('/config/service-categories/{id}', [ServiceCategoryController::class, 'update'])
+        ->name('config.service-categories.update')
+        ->middleware([PermissionMiddleware::class, CsrfMiddleware::class])
+        ->permission('config.service_categories.manage');
+
+    $router->get('/config/materials', [MaterialController::class, 'index'])
+        ->name('config.materials.index')
+        ->middleware(PermissionMiddleware::class)
+        ->permission('config.materials.view');
+
+    $router->get('/config/materials/create', [MaterialController::class, 'create'])
+        ->name('config.materials.create')
+        ->middleware(PermissionMiddleware::class)
+        ->permission('config.materials.manage');
+
+    $router->post('/config/materials', [MaterialController::class, 'store'])
+        ->name('config.materials.store')
+        ->middleware([PermissionMiddleware::class, CsrfMiddleware::class])
+        ->permission('config.materials.manage');
+
+    $router->get('/config/materials/{id}/edit', [MaterialController::class, 'edit'])
+        ->name('config.materials.edit')
+        ->middleware(PermissionMiddleware::class)
+        ->permission('config.materials.manage');
+
+    $router->put('/config/materials/{id}', [MaterialController::class, 'update'])
+        ->name('config.materials.update')
+        ->middleware([PermissionMiddleware::class, CsrfMiddleware::class])
+        ->permission('config.materials.manage');
 
     $router->get('/config/schedules', function () {
         return Response::view('config.schedules.index', ['title' => 'Horarios']);

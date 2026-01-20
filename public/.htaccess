@@ -1,0 +1,27 @@
+# Enable URL rewriting
+RewriteEngine On
+
+# If the requested file or directory doesn't exist, redirect to index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [L]
+
+# Disable directory listing
+Options -Indexes
+
+# Set default character encoding
+AddDefaultCharset UTF-8
+
+# Set proper MIME types
+<IfModule mod_mime.c.c>
+    AddType application/json .json
+    AddType application/xml .xml
+</IfModule>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set X-Content-Security-Policy "default-src 'self'"
+</IfModule>

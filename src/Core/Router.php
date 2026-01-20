@@ -166,11 +166,20 @@ class Router
     {
         $method = $request->method();
         $uri = $request->uri();
-        
+
+        // DEBUG: Log para diagnóstico (ELIMINAR DESPUÉS)
+        if (strpos($uri, '/clinical') === 0) {
+            error_log("ROUTER DEBUG: Method=$method, URI=$uri");
+        }
+
         // Buscar ruta coincidente
         $route = $this->findRoute($method, $uri);
-        
+
         if ($route === null) {
+            // DEBUG: Log cuando no se encuentra la ruta
+            if (strpos($uri, '/clinical') === 0) {
+                error_log("ROUTER DEBUG: No route found for $method $uri");
+            }
             return $this->handleNotFound();
         }
         

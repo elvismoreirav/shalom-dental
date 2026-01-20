@@ -23,11 +23,6 @@ $router->group(['middleware' => [AuthMiddleware::class, LocationMiddleware::clas
       ->middleware(PermissionMiddleware::class)
       ->permission(['agenda.appointments.view_all', 'agenda.appointments.view_own']);
 
-    $router->get('/agenda/{id}', [AppointmentDetailController::class, 'show'])
-    ->name('agenda.show')
-    ->middleware(PermissionMiddleware::class)
-    ->permission(['agenda.appointments.view_all', 'agenda.appointments.view_own']);
-
     $router->get('/agenda/create', [AppointmentController::class, 'create'])
     ->name('agenda.create')
     ->middleware(PermissionMiddleware::class)
@@ -37,6 +32,11 @@ $router->group(['middleware' => [AuthMiddleware::class, LocationMiddleware::clas
     ->name('agenda.edit')
     ->middleware(PermissionMiddleware::class)
     ->permission(['agenda.appointments.edit_all', 'agenda.appointments.edit_own']);
+
+    $router->get('/agenda/{id}', [AppointmentDetailController::class, 'show'])
+    ->name('agenda.show')
+    ->middleware(PermissionMiddleware::class)
+    ->permission(['agenda.appointments.view_all', 'agenda.appointments.view_own']);
 
     $router->post('/agenda', [AppointmentController::class, 'store'])
     ->name('agenda.store')

@@ -7,6 +7,7 @@
 
 use App\Core\Router;
 use App\Core\Response;
+use App\Core\Database;
 use App\Core\Middleware\AuthMiddleware;
 use App\Core\Middleware\LocationMiddleware;
 use App\Core\Middleware\PermissionMiddleware;
@@ -21,7 +22,43 @@ use App\Modules\Billing\Controllers\CreditNoteController;
 
 $router->group(['middleware' => [AuthMiddleware::class, LocationMiddleware::class]], function (Router $router) {
     $router->get('/billing', function () {
-        return Response::view('billing.index', ['title' => 'Facturacion']);
+        $db = Database::getInstance();
+        $locationId = (int) session('current_location_id', 0);
+        $organizationId = (int) session('organization_id', 0);
+
+        $params = [];
+        $filterSql = ' WHERE 1=1';
+        if ($locationId > 0) {
+            $filterSql .= ' AND location_id = ?';
+            $params[] = $locationId;
+        }
+        if ($organizationId > 0) {
+            $filterSql .= ' AND organization_id = ?';
+            $params[] = $organizationId;
+        }
+
+        $monthRow = $db->selectOne(
+            "SELECT total_amount FROM v_monthly_billing WHERE month_year = DATE_FORMAT(CURDATE(), '%Y-%m')" .
+            ($locationId > 0 ? " AND location_id = ?" : ''),
+            $locationId > 0 ? [$locationId] : []
+        );
+        $weekRow = $db->selectOne(
+            "SELECT COUNT(*) as total FROM invoices WHERE issue_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)" . str_replace('WHERE 1=1', '', $filterSql),
+            $params
+        );
+        $pendingRow = $db->selectOne(
+            "SELECT COUNT(*) as total FROM invoices WHERE status IN ('draft','pending','sent')" . str_replace('WHERE 1=1', '', $filterSql),
+            $params
+        );
+
+        return Response::view('billing.index', [
+            'title' => 'Facturacion',
+            'stats' => [
+                'billing_month' => (float) ($monthRow['total_amount'] ?? 0),
+                'invoices_week' => (int) ($weekRow['total'] ?? 0),
+                'invoices_pending' => (int) ($pendingRow['total'] ?? 0),
+            ],
+        ]);
     })->name('billing.index')
       ->middleware(PermissionMiddleware::class)
       ->permission(['billing.invoices.view_all', 'billing.invoices.view_own']);

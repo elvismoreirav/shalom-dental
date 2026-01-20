@@ -90,7 +90,21 @@ $paymentMethods = [
             <span class="text-sm font-medium" x-text="toast.message"></span>
         </div>
     </div>
-    <form action="<?= e($action) ?>" method="post" @submit="validateForm">
+
+    <div class="fixed bottom-4 left-4 right-4 lg:hidden z-40" x-show="showMobileSummary" x-transition>
+        <div class="bg-white border border-gray-200 rounded-xl shadow-lg p-4">
+            <div class="flex items-center justify-between text-sm text-gray-600">
+                <span>Total</span>
+                <span class="font-semibold text-gray-900">$<span x-text="total.toFixed(2)"></span></span>
+            </div>
+            <div class="flex items-center justify-between text-xs text-gray-500 mt-1">
+                <span x-text="balance === 0 ? 'Pagado' : (balance > 0 ? 'Por cobrar' : 'Cambio')"></span>
+                <span>$<span x-text="Math.abs(balance).toFixed(2)"></span></span>
+            </div>
+            <button type="button" @click="showMobileSummary = false" class="mt-3 w-full text-xs font-semibold text-shalom-primary">Ocultar resumen</button>
+        </div>
+    </div>
+    <form action="<?= e($action) ?>" method="post" @submit.prevent="submitForm($event)" novalidate>
         <?= csrf_field() ?>
         <?php if (strtoupper($method) !== 'POST'): ?>
             <input type="hidden" name="_method" value="<?= e($method) ?>">
@@ -99,7 +113,7 @@ $paymentMethods = [
         <!-- Top Bar -->
         <div class="bg-white border-b border-gray-200 sticky top-0 z-30">
             <div class="max-w-7xl mx-auto px-4 sm:px-6">
-                <div class="flex items-center justify-between h-16">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 py-3">
                     <div class="flex items-center gap-4">
                         <a href="/billing/invoices" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -111,8 +125,7 @@ $paymentMethods = [
                             <p class="text-xs text-gray-500">Complete los datos para generar la factura</p>
                         </div>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <!-- Keyboard shortcuts help -->
+                    <div class="flex flex-wrap items-center gap-3">
                         <div class="hidden lg:flex items-center gap-1 text-xs text-gray-400 mr-2" title="Atajos de teclado">
                             <kbd class="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-gray-500 font-mono">Ctrl+S</kbd>
                             <span>Borrador</span>
@@ -120,11 +133,25 @@ $paymentMethods = [
                             <kbd class="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-gray-500 font-mono">Ctrl+L</kbd>
                             <span>Linea</span>
                         </div>
-                        <button type="submit" name="action" value="draft" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                            Guardar Borrador
+                        <button type="submit" name="action" value="draft" :disabled="isSubmitting" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span x-show="!isSubmitting || submittedAction !== 'draft'">Guardar Borrador</span>
+                            <span x-show="isSubmitting && submittedAction === 'draft'" class="flex items-center">
+                                <svg class="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Guardando...
+                            </span>
                         </button>
-                        <button type="submit" name="action" value="emit" class="px-5 py-2 text-sm font-medium text-white bg-shalom-primary rounded-lg hover:bg-shalom-dark transition-colors shadow-sm">
-                            Emitir Factura
+                        <button type="submit" name="action" value="emit" :disabled="isSubmitting" class="px-5 py-2 text-sm font-medium text-white bg-shalom-primary rounded-lg hover:bg-shalom-dark transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span x-show="!isSubmitting || submittedAction !== 'emit'">Emitir Factura</span>
+                            <span x-show="isSubmitting && submittedAction === 'emit'" class="flex items-center">
+                                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Emitiendo...
+                            </span>
                         </button>
                     </div>
                 </div>
@@ -132,9 +159,16 @@ $paymentMethods = [
         </div>
 
         <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Main Content -->
-                <div class="lg:col-span-2 space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Main Content -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="bg-white border border-gray-100 rounded-lg px-4 py-3 text-xs text-gray-500 flex flex-wrap items-center gap-3">
+                            <span class="font-medium text-gray-700">Guia rapida:</span>
+                            <span>1. Selecciona cliente</span>
+                            <span>2. Agrega servicios</span>
+                            <span>3. Define pagos</span>
+                            <span>4. Emite o guarda borrador</span>
+                        </div>
 
                     <!-- Customer Section -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -147,6 +181,7 @@ $paymentMethods = [
                             </h2>
                         </div>
                         <div class="p-4">
+                            <div class="text-xs text-gray-500 mb-4">Busca un paciente y ajusta los datos de facturacion.</div>
                             <div class="mb-4">
                                 <label class="block text-xs font-medium text-gray-500 mb-1.5">Cliente <span class="text-red-400">*</span></label>
                                 <div class="flex gap-2">
@@ -225,14 +260,17 @@ $paymentMethods = [
 
                     <!-- Items Section -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <div class="px-4 py-3 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                            <h2 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                <svg class="w-4 h-4 text-shalom-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                                </svg>
-                                Servicios
-                            </h2>
-                            <div class="flex items-center gap-2">
+                        <div class="px-4 py-3 border-b border-gray-100 bg-gray-50/50 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                            <div>
+                                <h2 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-shalom-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                    </svg>
+                                    Servicios
+                                </h2>
+                                <p class="text-xs text-gray-500">Busca y agrega servicios a la factura.</p>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2">
                                 <div class="relative">
                                     <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -243,7 +281,7 @@ $paymentMethods = [
                                         @input="filterServices()"
                                         @focus="showServiceDropdown = true"
                                         @keydown.escape="showServiceDropdown = false"
-                                        placeholder="Buscar Servicio"
+                                        placeholder="Buscar servicio"
                                         class="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-shalom-primary/20 focus:border-shalom-primary bg-white"
                                     >
                                     <div x-show="showServiceDropdown && filteredServices.length > 0" @click.away="showServiceDropdown = false" x-cloak class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
@@ -257,13 +295,15 @@ $paymentMethods = [
                                 </div>
                                 <button type="button" @click="addItem()" class="inline-flex items-center gap-2 px-3 py-2 text-xs font-medium text-white bg-shalom-primary rounded-lg hover:bg-shalom-dark transition-colors">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-                                    Agregar Línea
+                                    Agregar línea
                                 </button>
                             </div>
                         </div>
 
                         <!-- Items Table - Desktop -->
                         <div class="overflow-x-auto hidden md:block">
+                            <div class="px-4 py-2 text-xs text-gray-400">Cantidad y precio con 4 decimales.</div>
+                            <div class="px-4 pb-2 text-xs text-gray-400">Usa la busqueda superior para cargar servicios mas rapido.</div>
                             <table class="w-full text-sm">
                                 <thead class="bg-gray-50 text-xs uppercase tracking-wider">
                                     <tr>
@@ -285,7 +325,7 @@ $paymentMethods = [
                                                 <input type="hidden" :name="'items[' + index + '][appointment_type_id]'" :value="item.appointmentTypeId || ''">
                                             </td>
                                             <td class="px-3 py-2">
-                                                <input type="text" :name="'items[' + index + '][description]'" x-model="item.description" placeholder="Descripcion del servicio" class="w-full border-0 bg-transparent px-0 py-1 text-sm focus:ring-0 placeholder-gray-300" required>
+                                                <input type="text" :name="'items[' + index + '][description]'" x-model="item.description" placeholder="Descripcion del servicio" class="w-full border-0 bg-transparent px-0 py-1 text-sm focus:ring-0 placeholder-gray-300">
                                             </td>
                                             <td class="px-3 py-2">
                                                 <input type="number" :name="'items[' + index + '][quantity]'" x-model.number="item.quantity" @input="calculateTotals()" min="0.0001" step="0.0001" class="w-full border border-gray-200 rounded px-2 py-1 text-sm text-center focus:ring-1 focus:ring-shalom-primary/30 focus:border-shalom-primary">
@@ -299,19 +339,20 @@ $paymentMethods = [
                                             <td class="px-3 py-2">
                                                 <div class="relative">
                                                     <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
-                                                    <input type="number" :name="'items[' + index + '][discount_amount]'" x-model.number="item.discount" @input="calculateTotals()" min="0" step="0.01" class="w-full border border-gray-200 rounded pl-5 pr-2 py-1 text-sm text-right focus:ring-1 focus:ring-shalom-primary/30 focus:border-shalom-primary">
-                                                </div>
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                <select :name="'items[' + index + '][tax_percentage]'" x-model.number="item.tax" @change="calculateTotals()" class="w-full border border-gray-200 rounded px-1 py-1 text-sm text-center focus:ring-1 focus:ring-shalom-primary/30 focus:border-shalom-primary bg-white">
-                                                    <option value="0">0%</option>
-                                                    <option value="12">12%</option>
-                                                    <option value="15">15%</option>
-                                                </select>
-                                            </td>
-                                            <td class="px-3 py-2 text-right font-medium text-gray-700">
-                                                $<span x-text="getLineTotal(item).toFixed(2)"></span>
-                                            </td>
+                                    <input type="number" :name="'items[' + index + '][discount_amount]'" x-model.number="item.discount" @input="calculateTotals()" min="0" step="0.01" class="w-full border border-gray-200 rounded pl-5 pr-2 py-1 text-sm text-right focus:ring-1 focus:ring-shalom-primary/30 focus:border-shalom-primary">
+                                </div>
+                                <div class="text-[10px] text-gray-400 mt-1" x-show="item.discount > (item.quantity * item.price)">Descuento mayor al subtotal</div>
+                            </td>
+                            <td class="px-3 py-2">
+                                <select :name="'items[' + index + '][tax_percentage]'" x-model.number="item.tax" @change="calculateTotals()" class="w-full border border-gray-200 rounded px-1 py-1 text-sm text-center focus:ring-1 focus:ring-shalom-primary/30 focus:border-shalom-primary bg-white">
+                                    <option value="0">0%</option>
+                                    <option value="12">12%</option>
+                                    <option value="15">15%</option>
+                                </select>
+                            </td>
+                            <td class="px-3 py-2 text-right font-medium text-gray-700">
+                                $<span x-text="getLineTotal(item).toFixed(2)"></span>
+                            </td>
                                             <td class="px-3 py-2">
                                                 <button type="button" @click="removeItem(index)" x-show="items.length > 1" class="p-1 text-gray-400 hover:text-red-500 transition-colors">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -329,7 +370,7 @@ $paymentMethods = [
                                 <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
                                     <div class="flex items-start justify-between mb-3">
                                         <div class="flex-1 pr-2">
-                                            <input type="text" x-model="item.description" placeholder="Descripcion del servicio" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-shalom-primary/20 focus:border-shalom-primary font-medium" required>
+                                            <input type="text" x-model="item.description" placeholder="Descripcion del servicio" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-shalom-primary/20 focus:border-shalom-primary font-medium">
                                         </div>
                                         <button type="button" @click="removeItem(index)" x-show="items.length > 1" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -369,6 +410,8 @@ $paymentMethods = [
                                             <span class="text-sm font-bold text-shalom-primary ml-1">$<span x-text="getLineTotal(item).toFixed(2)"></span></span>
                                         </div>
                                     </div>
+                                    <div class="text-[10px] text-red-500 mt-2" x-show="item.discount > (item.quantity * item.price)">Descuento mayor al subtotal</div>
+                                    <div class="text-[10px] text-red-500 mt-1" x-show="item.quantity <= 0">Cantidad invalida</div>
                                     <!-- Hidden inputs for mobile -->
                                     <input type="hidden" :name="'items[' + index + '][main_code]'" x-model="item.code">
                                     <input type="hidden" :name="'items[' + index + '][description]'" x-model="item.description">
@@ -381,9 +424,6 @@ $paymentMethods = [
                             </template>
                         </div>
 
-                        <div class="px-4 py-3 border-t border-gray-100 text-xs text-gray-400">
-                            Cantidad y precio con 4 decimales.
-                        </div>
                     </div>
 
                     <!-- Additional Info -->
@@ -441,11 +481,11 @@ $paymentMethods = [
                                 </button>
                                 <button type="button" @click="setQuickPayment('19')" :class="payments[0]?.code === '19' ? 'bg-shalom-primary text-white border-shalom-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-shalom-primary hover:text-shalom-primary'" class="px-3 py-1.5 text-xs font-medium border rounded-full transition-colors flex items-center gap-1.5">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                                    T. Credito
+                                    T. credito
                                 </button>
                                 <button type="button" @click="setQuickPayment('16')" :class="payments[0]?.code === '16' ? 'bg-shalom-primary text-white border-shalom-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-shalom-primary hover:text-shalom-primary'" class="px-3 py-1.5 text-xs font-medium border rounded-full transition-colors flex items-center gap-1.5">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                                    T. Debito
+                                    T. debito
                                 </button>
                                 <button type="button" @click="setQuickPayment('20')" :class="payments[0]?.code === '20' ? 'bg-shalom-primary text-white border-shalom-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-shalom-primary hover:text-shalom-primary'" class="px-3 py-1.5 text-xs font-medium border rounded-full transition-colors flex items-center gap-1.5">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
@@ -469,6 +509,7 @@ $paymentMethods = [
                                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
                                             <input type="number" :name="'payments[' + index + '][amount]'" x-model.number="payment.amount" @input="calculateBalance()" step="0.01" min="0" class="w-full pl-8 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-shalom-primary/20 focus:border-shalom-primary" placeholder="Monto">
                                         </div>
+                                        <div class="text-xs mt-1" :class="payment.amount > total ? 'text-red-500' : 'text-gray-400'" x-text="payment.amount > total ? 'El monto supera el total' : ''"></div>
                                     </div>
                                     <div class="w-36">
                                         <label class="block text-xs text-gray-500 mb-1">Plazo (dias)</label>
@@ -488,6 +529,7 @@ $paymentMethods = [
                             <button type="button" @click="addPayment()" class="text-sm text-shalom-primary hover:text-shalom-dark font-medium mt-2">
                                 + Agregar otro metodo de pago
                             </button>
+                            <p class="text-xs text-gray-400 mt-2">Distribuye el pago entre varios metodos si es necesario.</p>
                         </div>
                     </div>
                 </div>
@@ -560,7 +602,8 @@ $paymentMethods = [
 
                         <!-- Totals Summary -->
                         <div class="bg-gradient-to-br from-shalom-primary to-shalom-dark rounded-xl shadow-lg p-4 text-white">
-                            <h3 class="text-sm font-medium text-white/80 mb-4">Resumen</h3>
+                            <h3 class="text-sm font-medium text-white/80 mb-1">Resumen</h3>
+                            <p class="text-xs text-white/70 mb-3">Control final antes de emitir.</p>
                             <div class="space-y-2 text-sm">
                                 <div class="flex justify-between text-white/70">
                                     <span>Subtotal sin impuestos</span>
@@ -617,6 +660,9 @@ $paymentMethods = [
                                     Pago completo
                                 </div>
                             </div>
+                            <div class="mt-4 text-xs text-white/70">
+                                Balance actualizado en tiempo real.
+                            </div>
                         </div>
 
                     </div>
@@ -635,6 +681,71 @@ $paymentMethods = [
         <input type="hidden" name="total_with_tax" :value="totalWithTax.toFixed(2)">
         <input type="hidden" name="total" :value="total.toFixed(2)">
     </form>
+
+    <!-- Success Modal -->
+    <div x-show="showSuccessModal"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 overflow-y-auto"
+         x-cloak>
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+            <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" @click="showSuccessModal = false"></div>
+
+            <div x-show="showSuccessModal"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 transform scale-95"
+                 x-transition:enter-end="opacity-100 transform scale-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100 transform scale-100"
+                 x-transition:leave-end="opacity-0 transform scale-95"
+                 class="relative inline-block px-4 pt-5 pb-4 overflow-hidden text-left align-bottom bg-white rounded-xl shadow-xl transform sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+
+                <!-- Success Icon -->
+                <div class="flex items-center justify-center w-16 h-16 mx-auto bg-green-100 rounded-full">
+                    <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                </div>
+
+                <div class="mt-4 text-center">
+                    <h3 class="text-xl font-semibold text-gray-900" x-text="successTitle"></h3>
+                    <p class="mt-2 text-sm text-gray-500" x-text="successMessage"></p>
+                    <p class="mt-2 text-lg font-bold text-shalom-primary">Total: $<span x-text="total.toFixed(2)"></span></p>
+                </div>
+
+                <div class="mt-6 flex flex-col sm:flex-row gap-3">
+                    <a :href="'/billing/invoices/' + createdInvoiceId"
+                       class="flex-1 inline-flex justify-center items-center px-4 py-3 text-sm font-medium text-white bg-shalom-primary rounded-lg hover:bg-shalom-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-shalom-primary transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                        Ver Factura
+                    </a>
+                    <button type="button"
+                            @click="createAnother()"
+                            x-show="!isEditMode"
+                            class="flex-1 inline-flex justify-center items-center px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-shalom-primary transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                        </svg>
+                        Crear Otra
+                    </button>
+                    <a href="/billing/invoices"
+                       class="flex-1 inline-flex justify-center items-center px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-shalom-primary transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                        </svg>
+                        Ver Lista
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -678,6 +789,7 @@ function invoiceApp(config) {
         balance: 0,
         discountRate: 0,
         invoiceDiscount: parseFloat(config.invoiceDiscount || 0) || 0,
+        showMobileSummary: false,
 
         // UX Enhancements
         toast: { show: false, message: '', type: 'success' },
@@ -685,11 +797,20 @@ function invoiceApp(config) {
         isSubmitting: false,
         idValidation: { valid: null, message: '' },
 
+        // Success modal
+        showSuccessModal: false,
+        successTitle: '',
+        successMessage: '',
+        createdInvoiceId: null,
+        isEditMode: <?= !empty($invoice['id']) ? 'true' : 'false' ?>,
+        formAction: '<?= e($action) ?>',
+        submittedAction: '',
+
         initForm() {
             this.init();
             this.$watch('buyer', () => { this.hasUnsavedChanges = true; this.validateIdNumber(); }, { deep: true });
-            this.$watch('items', () => { this.hasUnsavedChanges = true; }, { deep: true });
-            this.$watch('payments', () => { this.hasUnsavedChanges = true; }, { deep: true });
+            this.$watch('items', () => { this.hasUnsavedChanges = true; this.showMobileSummary = true; }, { deep: true });
+            this.$watch('payments', () => { this.hasUnsavedChanges = true; this.showMobileSummary = true; }, { deep: true });
         },
 
         init() {
@@ -944,43 +1065,117 @@ function invoiceApp(config) {
             this.additionalInfo.splice(index, 1);
         },
 
-        validateForm(e) {
-            // Check buyer info first
+        validateForm() {
             if (!this.buyer.name.trim()) {
                 this.showToast('Ingrese el nombre del cliente', 'error');
-                e.preventDefault();
                 return false;
             }
 
             if (!this.buyer.idNumber.trim()) {
                 this.showToast('Ingrese el numero de identificacion', 'error');
-                e.preventDefault();
                 return false;
             }
 
-            // Validate ID number format
             if (!this.isValidIdNumber()) {
                 this.showToast('Numero de identificacion invalido', 'error');
-                e.preventDefault();
                 return false;
             }
 
-            // Check at least one valid item
             const validItems = this.items.filter(i => i.description && i.quantity > 0 && i.price >= 0);
             if (validItems.length === 0) {
                 this.showToast('Agregue al menos un servicio valido', 'error');
-                e.preventDefault();
                 return false;
             }
 
-            // Check payment
             if (this.balance > 0.01) {
                 this.showToast('El monto de pago es menor al total. Falta: $' + this.balance.toFixed(2), 'warning');
             }
 
+            return true;
+        },
+
+        async submitForm(e) {
+            // Get the clicked button's value (draft or emit)
+            const clickedButton = e.submitter;
+            this.submittedAction = clickedButton ? clickedButton.value : 'draft';
+
+            if (!this.validateForm()) {
+                return;
+            }
+
             this.isSubmitting = true;
             this.hasUnsavedChanges = false;
-            return true;
+
+            try {
+                // Find the form element
+                const formElement = this.$el.tagName === 'FORM' ? this.$el : this.$el.querySelector('form');
+                if (!formElement) {
+                    console.error('Form element not found');
+                    this.showToast('Error interno. Intente nuevamente.', 'error');
+                    return;
+                }
+
+                const formData = new FormData(formElement);
+
+                // Add the action
+                formData.set('action', this.submittedAction);
+
+                const response = await fetch(this.formAction, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Non-JSON response:', text.substring(0, 500));
+                    this.showToast('Error del servidor. Intente nuevamente.', 'error');
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    this.createdInvoiceId = data.invoice_id;
+                    if (this.submittedAction === 'emit') {
+                        this.successTitle = this.isEditMode ? 'Factura Actualizada y Emitida' : 'Factura Emitida';
+                        this.successMessage = data.message || 'La factura ha sido emitida correctamente.';
+                    } else {
+                        this.successTitle = this.isEditMode ? 'Borrador Actualizado' : 'Borrador Guardado';
+                        this.successMessage = data.message || 'El borrador de la factura ha sido guardado correctamente.';
+                    }
+                    this.showSuccessModal = true;
+                } else {
+                    if (data.errors) {
+                        const firstError = Object.values(data.errors)[0];
+                        this.showToast(firstError, 'error');
+                    } else {
+                        this.showToast(data.message || 'Error al guardar la factura', 'error');
+                    }
+                }
+            } catch (error) {
+                console.error('Submit error:', error);
+                this.showToast('Error de conexión. Intente nuevamente.', 'error');
+            } finally {
+                this.isSubmitting = false;
+            }
+        },
+
+        createAnother() {
+            this.clearForm();
+            this.showSuccessModal = false;
+            this.createdInvoiceId = null;
+
+            // Focus on the first field
+            this.$nextTick(() => {
+                const firstInput = document.querySelector('input[name="buyer_name"]');
+                if (firstInput) firstInput.focus();
+            });
         },
 
         // Toast notification system

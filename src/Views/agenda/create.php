@@ -13,6 +13,7 @@
     'patients' => $patients ?? [],
     'services' => $services ?? [],
     'appointmentTypes' => $appointmentTypes ?? [],
+    'professionals' => $professionals ?? [],
     'today' => $today ?? '',
     'startTime' => $startTime ?? '',
     'endTime' => $endTime ?? '',

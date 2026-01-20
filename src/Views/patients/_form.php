@@ -2,36 +2,50 @@
 /** @var array $patient */
 /** @var string $action */
 /** @var string $method */
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 $patient = $patient ?? [];
+$isEdit = !empty($patient['id']);
 ?>
 <?php $errors = getFlash('errors', []); ?>
 
 <!-- Enhanced Patient Form with Modern UX/UI -->
-<form action="<?= e($action ?? '/patients') ?>" method="post" class="space-y-8" x-data="{ 
-    currentStep: 1, 
-    totalSteps: 3,
-    showOptional: false,
-    formData: {
-        first_name: '<?= e($patient['first_name'] ?? '') ?>',
-        last_name: '<?= e($patient['last_name'] ?? '') ?>',
-        id_type: '<?= e($patient['id_type'] ?? 'cedula') ?>',
-        id_number: '<?= e($patient['id_number'] ?? '') ?>',
-        email: '<?= e($patient['email'] ?? '') ?>',
-        phone: '<?= e($patient['phone'] ?? '') ?>',
-        birth_date: '<?= e($patient['birth_date'] ?? '') ?>',
-        gender: '<?= e($patient['gender'] ?? '') ?>',
-        address: '<?= e($patient['address'] ?? '') ?>',
-        city: '<?= e($patient['city'] ?? '') ?>',
-        province: '<?= e($patient['province'] ?? '') ?>',
-        notes: '<?= e($patient['notes'] ?? '') ?>'
-    }
-}">
+<form action="<?= e($action ?? '/patients') ?>" method="post" class="space-y-8" x-data="patientForm(<?= htmlspecialchars(json_encode([
+    'patient' => $patient,
+    'isEdit' => $isEdit,
+    'action' => $action ?? '/patients',
+    'method' => $method ?? 'POST',
+]), ENT_QUOTES, 'UTF-8') ?>)" @submit.prevent="submitForm()" x-init="console.log('Form initialized!', $data)">
     <?= csrf_field() ?>
     <?php if (!empty($method) && strtoupper($method) !== 'POST'): ?>
         <input type="hidden" name="_method" value="<?= e($method) ?>">
     <?php endif; ?>
+
+
+
+    
+    
+
+    
+    
+    <div x-data="{ show: false }" class="mb-4 p-3 bg-yellow-100 border border-yellow-400 rounded">
+        <div class="flex items-center justify-between">
+            <span class="text-sm text-yellow-800">
+                <strong>Debug:</strong> Alpine.js Status:
+                <span x-text="typeof Alpine !== 'undefined' ? '✓ Loaded' : '✗ Not Loaded'"></span>
+                | Current Step: <span x-text="currentStep"></span>
+                | Is Submitting: <span x-text="isSubmitting"></span>
+            </span>
+            <button type="button" @click="show = !show" class="text-yellow-800 text-sm underline">
+                <span x-show="!show">Show Test</span>
+                <span x-show="show">Hide Test</span>
+            </button>
+        </div>
+        <div x-show="show" class="mt-2 text-xs text-yellow-700">
+            <p>Test Form Submission:</p>
+            <button type="button" @click="console.log('Test button clicked'); $el.querySelector('button[type=submit]').click()" class="px-2 py-1 bg-yellow-200 rounded text-xs">
+                Click to Trigger Submit
+            </button>
+        </div>
+    </div>
 
     <!-- Progress Indicator -->
     <div class="relative">
@@ -393,16 +407,17 @@ $patient = $patient ?? [];
     <!-- Navigation Buttons -->
     <div class="flex items-center justify-between pt-6 border-t border-gray-200">
         <div class="flex items-center space-x-3">
-            <button type="button" 
+            <button type="button"
                     x-show="currentStep > 1"
                     @click="currentStep--"
-                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-shalom-primary focus:border-shalom-primary transition-colors duration-200 flex items-center">
+                    :disabled="isSubmitting"
+                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-shalom-primary focus:border-shalom-primary transition-colors duration-200 flex items-center disabled:opacity-50">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                 </svg>
                 Anterior
             </button>
-            
+
             <a href="/patients" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-shalom-primary focus:border-shalom-primary transition-colors duration-200 flex items-center">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -412,24 +427,371 @@ $patient = $patient ?? [];
         </div>
 
         <div class="flex items-center space-x-3">
-            <button type="button" 
+            <button type="button"
                     x-show="currentStep < 3"
-                    @click="currentStep++"
-                    class="px-6 py-2 text-sm font-medium text-white bg-shalom-primary rounded-lg hover:bg-shalom-dark focus:outline-none focus:ring-2 focus:ring-shalom-primary focus:ring-offset-2 transition-colors duration-200 flex items-center">
+                    @click="goNext()"
+                    :disabled="isSubmitting"
+                    class="px-6 py-2 text-sm font-medium text-white bg-shalom-primary rounded-lg hover:bg-shalom-dark focus:outline-none focus:ring-2 focus:ring-shalom-primary focus:ring-offset-2 transition-colors duration-200 flex items-center disabled:opacity-50">
                 Siguiente
                 <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
             </button>
 
-            <button type="submit" 
-                    x-show="currentStep === 3"
-                    class="px-6 py-2 text-sm font-medium text-white bg-shalom-primary rounded-lg hover:bg-shalom-dark focus:outline-none focus:ring-2 focus:ring-shalom-primary focus:ring-offset-2 transition-colors duration-200 flex items-center">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                Guardar Paciente
+
+            <!-- Save button - visible on ALL steps so users can save at any time -->
+            <button type="submit"
+                    :disabled="isSubmitting"
+                    class="px-6 py-2 text-sm font-medium text-white bg-shalom-primary rounded-lg hover:bg-shalom-dark focus:outline-none focus:ring-2 focus:ring-shalom-primary focus:ring-offset-2 transition-colors duration-200 flex items-center disabled:opacity-50">
+                <span x-show="isSubmitting" class="flex items-center">
+                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Guardando...
+                </span>
+                <span x-show="!isSubmitting" class="flex items-center">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Guardar Paciente
+                </span>
             </button>
         </div>
     </div>
+
+    <!-- Success Modal -->
+    <div x-show="showSuccessModal"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 overflow-y-auto"
+         x-cloak>
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+            <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" @click="showSuccessModal = false"></div>
+
+            <div x-show="showSuccessModal"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 transform scale-95"
+                 x-transition:enter-end="opacity-100 transform scale-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100 transform scale-100"
+                 x-transition:leave-end="opacity-0 transform scale-95"
+                 class="relative inline-block px-4 pt-5 pb-4 overflow-hidden text-left align-bottom bg-white rounded-xl shadow-xl transform sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+
+                <!-- Success Icon -->
+                <div class="flex items-center justify-center w-16 h-16 mx-auto bg-green-100 rounded-full">
+                    <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                </div>
+
+                <div class="mt-4 text-center">
+                    <h3 class="text-xl font-semibold text-gray-900" x-text="successTitle"></h3>
+                    <p class="mt-2 text-sm text-gray-500" x-text="successMessage"></p>
+                </div>
+
+                <div class="mt-6 flex flex-col sm:flex-row gap-3">
+                    <a :href="'/patients/' + createdPatientId"
+                       class="flex-1 inline-flex justify-center items-center px-4 py-3 text-sm font-medium text-white bg-shalom-primary rounded-lg hover:bg-shalom-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-shalom-primary transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                        Ver Paciente
+                    </a>
+                    <button type="button"
+                            @click="createAnother()"
+                            x-show="!isEdit"
+                            class="flex-1 inline-flex justify-center items-center px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-shalom-primary transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                        </svg>
+                        Crear Otro
+                    </button>
+                    <a href="/patients"
+                       class="flex-1 inline-flex justify-center items-center px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-shalom-primary transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                        </svg>
+                        Ver Lista
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div x-show="toast.show"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 transform translate-y-2"
+         x-transition:enter-end="opacity-100 transform translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed bottom-4 right-4 z-50"
+         x-cloak>
+        <div :class="{
+            'bg-green-500': toast.type === 'success',
+            'bg-red-500': toast.type === 'error',
+            'bg-yellow-500': toast.type === 'warning',
+            'bg-blue-500': toast.type === 'info'
+        }" class="px-4 py-3 rounded-lg shadow-lg text-white flex items-center gap-3 min-w-[280px]">
+            <template x-if="toast.type === 'success'">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            </template>
+            <template x-if="toast.type === 'error'">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </template>
+            <span class="text-sm font-medium" x-text="toast.message"></span>
+        </div>
+    </div>
 </form>
+
+<script>
+console.log('patientForm script loaded');
+
+function patientForm(config) {
+    console.log('patientForm called with config:', config);
+
+    return {
+        currentStep: 1,
+        totalSteps: 3,
+        showOptional: false,
+        isSubmitting: false,
+        isEdit: config.isEdit || false,
+        action: config.action || '/patients',
+        method: config.method || 'POST',
+
+        formData: {
+            first_name: config.patient?.first_name || '',
+            last_name: config.patient?.last_name || '',
+            id_type: config.patient?.id_type || 'cedula',
+            id_number: config.patient?.id_number || '',
+            email: config.patient?.email || '',
+            phone: config.patient?.phone || '',
+            birth_date: config.patient?.birth_date || '',
+            gender: config.patient?.gender || '',
+            address: config.patient?.address || '',
+            city: config.patient?.city || '',
+            province: config.patient?.province || '',
+            notes: config.patient?.notes || ''
+        },
+
+        // Success modal
+        showSuccessModal: false,
+        successTitle: '',
+        successMessage: '',
+        createdPatientId: null,
+
+        // Toast notification
+        toast: { show: false, message: '', type: 'success' },
+
+        goNext: function() {
+            console.log('goNext called, currentStep:', this.currentStep);
+            if (this.currentStep < this.totalSteps) {
+                this.currentStep++;
+            }
+        },
+
+        showToast: function(message, type) {
+            type = type || 'success';
+            console.log('showToast called:', message, type);
+            this.toast = { show: true, message: message, type: type };
+            setTimeout(function() {
+                this.toast.show = false;
+            }.bind(this), 4000);
+        },
+
+        validateForm: function() {
+            if (!this.formData.first_name.trim()) {
+                this.showToast('El nombre es requerido', 'error');
+                this.currentStep = 1;
+                return false;
+            }
+            if (!this.formData.last_name.trim()) {
+                this.showToast('El apellido es requerido', 'error');
+                this.currentStep = 1;
+                return false;
+            }
+            if (!this.formData.id_number.trim()) {
+                this.showToast('El número de identificación es requerido', 'error');
+                this.currentStep = 1;
+                return false;
+            }
+            if (!this.formData.phone.trim()) {
+                this.showToast('El teléfono es requerido', 'error');
+                this.currentStep = 2;
+                return false;
+            }
+            return true;
+        },
+
+        submitForm: async function(event) {
+            console.log('=== SUBMIT START ===');
+            console.log('submitForm called!');
+            console.log('Event:', event);
+            console.log('currentStep:', this.currentStep);
+            console.log('isSubmitting:', this.isSubmitting);
+            console.log('formData:', this.formData);
+            console.log('action:', this.action);
+
+            if (!this.validateForm()) {
+                console.log('=== VALIDATION FAILED ===');
+                return;
+            }
+
+            console.log('=== VALIDATION PASSED ===');
+            console.log('Setting isSubmitting to true');
+            this.isSubmitting = true;
+
+            var self = this;
+            try {
+                // Create FormData and add all form fields
+                const formData = new FormData();
+
+                // Add CSRF token from the form
+                const csrfInput = this.$el.querySelector('input[name="_csrf_token"]');
+                if (csrfInput) {
+                    formData.set('_csrf_token', csrfInput.value);
+                } else {
+                    console.error('CSRF token input not found in form');
+                    this.isSubmitting = false;
+                    this.showToast('Error de seguridad. Recargue la página e intente nuevamente.', 'error');
+                    return;
+                }
+
+                // Add all form data from Alpine state
+                Object.keys(this.formData).forEach(function(key) {
+                    formData.set(key, self.formData[key] || '');
+                });
+
+                // Add method override if needed
+                if (this.method.toUpperCase() !== 'POST') {
+                    formData.set('_method', this.method);
+                }
+
+                console.log('Submitting form to:', this.action, 'with data:', Object.fromEntries(formData));
+
+                var response;
+                var timeout = false;
+
+                var controller = new AbortController();
+                var timeoutId = setTimeout(function() {
+                    controller.abort();
+                    timeout = true;
+                }, 30000); // 30 second timeout
+
+                try {
+                    response = await fetch(this.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        },
+                        signal: controller.signal
+                    });
+
+                    clearTimeout(timeoutId);
+                    console.log('Response status:', response.status, 'OK:', response.ok);
+
+                } catch (fetchError) {
+                    if (timeout) {
+                        console.error('Request timeout:', fetchError);
+                        this.isSubmitting = false;
+                        this.showToast('La solicitud tardó demasiado. Intente nuevamente.', 'error');
+                        return;
+                    }
+                    throw fetchError;
+                }
+
+                // Check if response is JSON
+                var contentType = response.headers.get('content-type');
+                console.log('Content-Type:', contentType);
+                if (!contentType || !contentType.includes('application/json')) {
+                    // Server returned non-JSON (probably an error page)
+                    var text = await response.text();
+                    console.error('Non-JSON response:', text.substring(0, 500));
+                    console.error('Content-Type:', contentType);
+                    console.error('Full response:', text);
+                    this.isSubmitting = false;
+                    this.showToast('Error del servidor. Intente nuevamente.', 'error');
+                    return;
+                }
+
+                var data;
+                try {
+                    data = await response.json();
+                    console.log('Response data:', data);
+                } catch (jsonError) {
+                    console.error('JSON parse error:', jsonError);
+                    console.error('Response text:', await response.text());
+                    this.isSubmitting = false;
+                    this.showToast('Error al procesar la respuesta del servidor.', 'error');
+                    return;
+                }
+
+                if (data.success) {
+                    this.createdPatientId = data.patient_id;
+                    this.successTitle = this.isEdit ? 'Paciente Actualizado' : 'Paciente Creado';
+                    this.successMessage = data.message || (this.isEdit
+                        ? 'Los datos del paciente han sido actualizados correctamente.'
+                        : 'El paciente ha sido registrado exitosamente en el sistema.');
+                    this.showSuccessModal = true;
+                } else {
+                    // Handle validation errors
+                    if (data.errors) {
+                        var firstError = Object.values(data.errors)[0];
+                        this.showToast(firstError, 'error');
+                    } else {
+                        this.showToast(data.message || 'Error al guardar el paciente', 'error');
+                    }
+                }
+            } catch (error) {
+                console.error('Submit error:', error);
+                console.error('Error name:', error.name);
+                console.error('Error message:', error.message);
+                console.error('Error stack:', error.stack);
+                this.isSubmitting = false;
+                this.showToast('Error de conexión. Intente nuevamente. (' + error.message + ')', 'error');
+            } finally {
+                this.isSubmitting = false;
+            }
+        },
+
+        createAnother() {
+            // Reset form
+            this.formData = {
+                first_name: '',
+                last_name: '',
+                id_type: 'cedula',
+                id_number: '',
+                email: '',
+                phone: '',
+                birth_date: '',
+                gender: '',
+                address: '',
+                city: '',
+                province: '',
+                notes: ''
+            };
+            this.currentStep = 1;
+            this.showSuccessModal = false;
+            this.createdPatientId = null;
+
+            // Clear local storage draft
+            localStorage.removeItem('patient_draft');
+
+            // Focus on first field
+            this.$nextTick(() => {
+                const firstInput = document.getElementById('first_name');
+                if (firstInput) firstInput.focus();
+            });
+        }
+    };
+}
+</script>

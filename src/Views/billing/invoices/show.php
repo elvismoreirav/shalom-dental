@@ -2,12 +2,12 @@
 
 <?php $this->section('content'); ?>
 
-<div class="mb-6 flex items-center justify-between">
+<div class="mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
     <div>
         <h2 class="text-2xl font-bold text-gray-900">Factura #<?= e((string) ($invoice['id'] ?? 0)) ?></h2>
         <p class="text-sm text-gray-500">Detalle de la factura.</p>
     </div>
-    <div class="space-x-2">
+    <div class="flex flex-wrap items-center gap-2">
         <a href="/billing/invoices" class="px-4 py-2 rounded-lg border text-sm">Volver</a>
         <a href="/billing/invoices/<?= e((string) ($invoice['id'] ?? 0)) ?>/edit" class="px-4 py-2 rounded-lg bg-shalom-primary text-white text-sm">Editar</a>
         <a href="/billing/invoices/<?= e((string) ($invoice['id'] ?? 0)) ?>/pdf" class="px-4 py-2 rounded-lg border text-sm">PDF</a>
@@ -41,6 +41,10 @@
         <div>
             <div class="text-gray-500">Total</div>
             <div class="font-medium text-gray-900">$<?= number_format((float) ($invoice['total'] ?? 0), 2) ?></div>
+        </div>
+        <div>
+            <div class="text-gray-500">Estado</div>
+            <div class="font-medium text-gray-900"><?= e($invoice['status'] ?? '-') ?></div>
         </div>
     </div>
 </div>
@@ -79,6 +83,7 @@
 </div>
 
 <div class="mt-6 bg-white shadow rounded-lg border border-gray-100 p-6">
+    <div class="text-sm font-semibold text-gray-700 mb-3">Totales</div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
         <div class="flex justify-between text-gray-600">
             <span>Subtotal sin impuestos</span>

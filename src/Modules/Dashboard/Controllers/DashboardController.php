@@ -47,7 +47,12 @@ class DashboardController
             $locationId > 0 ? [$locationId] : []
         );
 
-        $totalPatients = $this->db->selectOne("SELECT COUNT(*) as total FROM patients");
+        $organizationId = (int) session('organization_id', 0);
+
+        $totalPatients = $this->db->selectOne(
+            "SELECT COUNT(*) as total FROM patients" . ($organizationId > 0 ? " WHERE organization_id = ?" : ""),
+            $organizationId > 0 ? [$organizationId] : []
+        );
 
         $billingMonth = $this->db->selectOne(
             "SELECT total_amount FROM v_monthly_billing WHERE month_year = DATE_FORMAT(CURDATE(), '%Y-%m')" .

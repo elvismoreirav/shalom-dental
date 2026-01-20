@@ -129,8 +129,24 @@ class PatientController
 
     public function create(Request $request): Response
     {
+        $organizationId = (int) session('organization_id', 0);
+
+        $totalRow = $this->db->selectOne(
+            'SELECT COUNT(*) as total FROM patients' . ($organizationId > 0 ? ' WHERE organization_id = ?' : ''),
+            $organizationId > 0 ? [$organizationId] : []
+        );
+        $newRow = $this->db->selectOne(
+            'SELECT COUNT(*) as total FROM patients WHERE created_at >= DATE_FORMAT(CURDATE(), "%Y-%m-01")' .
+            ($organizationId > 0 ? ' AND organization_id = ?' : ''),
+            $organizationId > 0 ? [$organizationId] : []
+        );
+
         return Response::view('patients.create', [
             'title' => 'Crear Paciente',
+            'stats' => [
+                'total_patients' => (int) ($totalRow['total'] ?? 0),
+                'new_patients_month' => (int) ($newRow['total'] ?? 0),
+            ],
         ]);
     }
 
@@ -163,6 +179,7 @@ class PatientController
     {
         $organizationId = (int) session('organization_id', 0);
         $userId = (int) (user()['id'] ?? 0);
+        $isAjax = $request->isAjax();
 
         $data = [
             'organization_id' => $organizationId,
@@ -207,14 +224,29 @@ class PatientController
         }
 
         if (!empty($errors)) {
+            if ($isAjax) {
+                return Response::json([
+                    'success' => false,
+                    'message' => 'Complete los campos requeridos.',
+                    'errors' => $errors,
+                ], 422);
+            }
             session()->setFlash('error', 'Complete los campos requeridos.');
             session()->setFlash('errors', $errors);
             return Response::redirect('/patients/create');
         }
 
         $patientId = $this->db->insert('patients', $data);
-        session()->setFlash('success', 'Paciente creado correctamente.');
 
+        if ($isAjax) {
+            return Response::json([
+                'success' => true,
+                'message' => 'Paciente creado correctamente.',
+                'patient_id' => $patientId,
+            ]);
+        }
+
+        session()->setFlash('success', 'Paciente creado correctamente.');
         return Response::redirect('/patients/' . $patientId);
     }
 
@@ -222,6 +254,7 @@ class PatientController
     {
         $patientId = (int) $request->param('id');
         $organizationId = (int) session('organization_id', 0);
+        $isAjax = $request->isAjax();
 
         $sql = "SELECT id FROM patients WHERE id = ?";
         $params = [$patientId];
@@ -233,6 +266,12 @@ class PatientController
 
         $patient = $this->db->selectOne($sql, $params);
         if (!$patient) {
+            if ($isAjax) {
+                return Response::json([
+                    'success' => false,
+                    'message' => 'Paciente no encontrado.',
+                ], 404);
+            }
             return Response::notFound('Paciente no encontrado');
         }
 
@@ -274,14 +313,29 @@ class PatientController
         }
 
         if (!empty($errors)) {
+            if ($isAjax) {
+                return Response::json([
+                    'success' => false,
+                    'message' => 'Complete los campos requeridos.',
+                    'errors' => $errors,
+                ], 422);
+            }
             session()->setFlash('error', 'Complete los campos requeridos.');
             session()->setFlash('errors', $errors);
             return Response::redirect('/patients/' . $patientId . '/edit');
         }
 
         $this->db->update('patients', $data, 'id = ?', [$patientId]);
-        session()->setFlash('success', 'Paciente actualizado correctamente.');
 
+        if ($isAjax) {
+            return Response::json([
+                'success' => true,
+                'message' => 'Paciente actualizado correctamente.',
+                'patient_id' => $patientId,
+            ]);
+        }
+
+        session()->setFlash('success', 'Paciente actualizado correctamente.');
         return Response::redirect('/patients/' . $patientId);
     }
 }

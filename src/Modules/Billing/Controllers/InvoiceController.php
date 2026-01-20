@@ -127,6 +127,7 @@ class InvoiceController
         $organizationId = (int) session('organization_id', 0);
         $locationId = (int) session('current_location_id', 0);
         $userId = (int) (user()['id'] ?? 0);
+        $isAjax = $request->isAjax();
 
         $patientId = (int) $request->input('patient_id');
         $emissionPointId = (int) $request->input('emission_point_id');
@@ -136,6 +137,13 @@ class InvoiceController
         $buyerIdNumber = trim((string) $request->input('buyer_id_number'));
 
         if ($organizationId <= 0 || $locationId <= 0 || $emissionPointId <= 0 || $buyerName === '' || $buyerIdNumber === '') {
+            if ($isAjax) {
+                return Response::json([
+                    'success' => false,
+                    'message' => 'Complete los campos requeridos.',
+                    'errors' => ['general' => 'Complete los campos requeridos.'],
+                ], 422);
+            }
             session()->setFlash('error', 'Complete los campos requeridos.');
             return Response::redirect('/billing/invoices/create');
         }
@@ -146,6 +154,12 @@ class InvoiceController
         );
 
         if (!$emissionPoint) {
+            if ($isAjax) {
+                return Response::json([
+                    'success' => false,
+                    'message' => 'Punto de emision invalido.',
+                ], 422);
+            }
             session()->setFlash('error', 'Punto de emision invalido.');
             return Response::redirect('/billing/invoices/create');
         }
@@ -167,9 +181,17 @@ class InvoiceController
         [$totals, $computedItems, $validItems] = $this->calculateTotals($items, $invoiceDiscount, $tip, $totalIce);
 
         if ($validItems === 0) {
+            if ($isAjax) {
+                return Response::json([
+                    'success' => false,
+                    'message' => 'Agregue al menos un item valido.',
+                ], 422);
+            }
             session()->setFlash('error', 'Agregue al menos un item valido.');
             return Response::redirect('/billing/invoices/create');
         }
+
+        $action = $request->input('action', 'draft');
 
         $invoiceId = $this->db->insert('invoices', [
             'organization_id' => $organizationId,
@@ -212,7 +234,18 @@ class InvoiceController
         $this->persistItems($invoiceId, $computedItems);
         $this->persistPayments($invoiceId, $request->input('payments', []));
 
-        session()->setFlash('success', 'Factura creada.');
+        $message = $action === 'emit' ? 'Factura emitida correctamente.' : 'Borrador guardado correctamente.';
+
+        if ($isAjax) {
+            return Response::json([
+                'success' => true,
+                'message' => $message,
+                'invoice_id' => $invoiceId,
+                'action' => $action,
+            ]);
+        }
+
+        session()->setFlash('success', $message);
         return Response::redirect('/billing/invoices');
     }
 
@@ -335,11 +368,19 @@ class InvoiceController
     {
         $invoiceId = (int) $request->param('id');
         $locationId = (int) session('current_location_id', 0);
+        $isAjax = $request->isAjax();
+
         $invoice = $this->db->selectOne(
             "SELECT id FROM invoices WHERE id = ?" . ($locationId > 0 ? " AND location_id = ?" : ""),
             $locationId > 0 ? [$invoiceId, $locationId] : [$invoiceId]
         );
         if (!$invoice) {
+            if ($isAjax) {
+                return Response::json([
+                    'success' => false,
+                    'message' => 'Factura no encontrada.',
+                ], 404);
+            }
             return Response::notFound('Factura no encontrada');
         }
 
@@ -354,9 +395,17 @@ class InvoiceController
         [$totals, $computedItems, $validItems] = $this->calculateTotals($items, $invoiceDiscount, $tip, $totalIce);
 
         if ($validItems === 0) {
+            if ($isAjax) {
+                return Response::json([
+                    'success' => false,
+                    'message' => 'Agregue al menos un item valido.',
+                ], 422);
+            }
             session()->setFlash('error', 'Agregue al menos un item valido.');
             return Response::redirect('/billing/invoices/' . $invoiceId . '/edit');
         }
+
+        $action = $request->input('action', 'draft');
 
         $this->db->update('invoices', [
             'patient_id' => (int) $request->input('patient_id') ?: null,
@@ -384,7 +433,18 @@ class InvoiceController
         $this->persistItems($invoiceId, $computedItems);
         $this->persistPayments($invoiceId, $request->input('payments', []));
 
-        session()->setFlash('success', 'Factura actualizada.');
+        $message = $action === 'emit' ? 'Factura actualizada y emitida correctamente.' : 'Borrador actualizado correctamente.';
+
+        if ($isAjax) {
+            return Response::json([
+                'success' => true,
+                'message' => $message,
+                'invoice_id' => $invoiceId,
+                'action' => $action,
+            ]);
+        }
+
+        session()->setFlash('success', $message);
         return Response::redirect('/billing/invoices/' . $invoiceId);
     }
 

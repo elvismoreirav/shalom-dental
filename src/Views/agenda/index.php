@@ -1,15 +1,104 @@
-<?php $this->extend('layouts.app'); ?>
+<?php 
+$this->extend('layouts.app');
+
+// Set breadcrumbs for enhanced navigation
+$breadcrumbs = [
+    ['title' => 'Dashboard', 'url' => '/dashboard'],
+    ['title' => 'Agenda', 'url' => '/agenda']
+];
+
+// Page context information
+$pageContext = [
+    'status' => [
+        'text' => 'Vista Diaria',
+        'class' => 'bg-blue-100 text-blue-800'
+    ],
+    'count' => count($appointments ?? []) . ' citas',
+    'action' => [
+        'text' => 'Nueva Cita',
+        'onclick' => 'window.location.href="/agenda/create"'
+    ]
+];
+
+// Header actions
+$headerActions = [
+    [
+        'type' => 'link',
+        'url' => '/agenda/create',
+        'text' => 'Nueva Cita',
+        'class' => 'bg-shalom-primary text-white hover:bg-shalom-dark',
+        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>'
+    ],
+    [
+        'type' => 'link', 
+        'url' => '/agenda/calendar',
+        'text' => 'Ver Calendario',
+        'class' => 'border border-gray-300 text-gray-700 hover:bg-gray-50',
+        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>'
+    ]
+];
+?>
 
 <?php $this->section('content'); ?>
 
-<div class="mb-6 flex items-center justify-between">
-    <div>
-        <h2 class="text-2xl font-bold text-gray-900">Agenda del dia</h2>
-        <p class="text-sm text-gray-500">Citas programadas para hoy.</p>
-    </div>
-    <div class="flex items-center gap-2">
-        <a href="/agenda/create" class="px-4 py-2 rounded-lg bg-shalom-primary text-white text-sm">Nueva cita</a>
-        <a href="/agenda/calendar" class="px-4 py-2 rounded-lg border text-sm">Ver calendario</a>
+<!-- Enhanced Header with Stats -->
+<div class="mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-lg border border-gray-100 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">Citas Hoy</p>
+                    <p class="text-2xl font-bold text-gray-900"><?= count($appointments ?? []) ?></p>
+                </div>
+                <div class="bg-blue-100 rounded-lg p-2">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg border border-gray-100 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">Confirmadas</p>
+                    <p class="text-2xl font-bold text-green-600"><?= count(array_filter($appointments ?? [], fn($a) => ($a['status'] ?? '') === 'confirmed')) ?></p>
+                </div>
+                <div class="bg-green-100 rounded-lg p-2">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg border border-gray-100 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">En Espera</p>
+                    <p class="text-2xl font-bold text-yellow-600"><?= count(array_filter($appointments ?? [], fn($a) => ($a['status'] ?? '') === 'waiting')) ?></p>
+                </div>
+                <div class="bg-yellow-100 rounded-lg p-2">
+                    <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg border border-gray-100 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">Completadas</p>
+                    <p class="text-2xl font-bold text-gray-600"><?= count(array_filter($appointments ?? [], fn($a) => ($a['status'] ?? '') === 'completed')) ?></p>
+                </div>
+                <div class="bg-gray-100 rounded-lg p-2">
+                    <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -67,6 +156,9 @@
                             <td class="px-4 py-3 text-gray-600"><?= e($appointment['appointment_type_name'] ?? '-') ?></td>
                             <td class="px-4 py-3 text-gray-600"><?= e($appointment['status'] ?? '-') ?></td>
                             <td class="px-4 py-3 text-right">
+                                <?php if (can('clinical.notes.view')): ?>
+                                    <a href="/clinical/attend/<?= e((string) $appointment['id']) ?>" class="text-shalom-primary hover:underline">Atender</a>
+                                <?php endif; ?>
                                 <a href="/agenda/<?= e((string) $appointment['id']) ?>" class="text-shalom-primary hover:underline">Ver</a>
                                 <a href="/agenda/<?= e((string) $appointment['id']) ?>/edit" class="ml-3 text-shalom-primary hover:underline">Editar</a>
                             </td>

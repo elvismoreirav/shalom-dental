@@ -1,17 +1,97 @@
-<?php $this->extend('layouts.app'); ?>
+<?php 
+$this->extend('layouts.app');
+
+// Set breadcrumbs for enhanced navigation
+$breadcrumbs = [
+    ['title' => 'Dashboard', 'url' => '/dashboard'],
+    ['title' => 'Pacientes', 'url' => '/patients']
+];
+
+// Page context information
+$pageContext = [
+    'count' => ($total ?? 0) . ' pacientes',
+    'action' => [
+        'text' => 'Nuevo Paciente',
+        'onclick' => 'window.location.href="/patients/create"'
+    ]
+];
+
+// Header actions
+$headerActions = [
+    [
+        'type' => 'link',
+        'url' => '/patients/create',
+        'text' => 'Nuevo Paciente',
+        'class' => 'bg-shalom-primary text-white hover:bg-shalom-dark',
+        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>'
+    ]
+];
+
+if (can('reports.export.excel')) {
+    $headerActions[] = [
+        'type' => 'link',
+        'url' => '/patients/export/csv',
+        'text' => 'Exportar CSV',
+        'class' => 'border border-gray-300 text-gray-700 hover:bg-gray-50',
+        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>'
+    ];
+}
+?>
 
 <?php $this->section('content'); ?>
 
-<div class="mb-6 flex items-center justify-between">
-    <div>
-        <h2 class="text-2xl font-bold text-gray-900">Pacientes</h2>
-        <p class="text-sm text-gray-500">Total: <?= e((string) ($total ?? 0)) ?> resultados.</p>
-    </div>
-    <div class="flex items-center gap-2">
-        <?php if (can('reports.export.excel')): ?>
-            <a href="/patients/export/csv" class="px-4 py-2 rounded-lg border text-sm">Exportar CSV</a>
-        <?php endif; ?>
-        <a href="/patients/create" class="px-4 py-2 rounded-lg bg-shalom-primary text-white text-sm">Nuevo paciente</a>
+<!-- Enhanced Search and Filters Section -->
+<div class="mb-6 bg-white rounded-lg border border-gray-100 p-6">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div class="flex-1">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Búsqueda Avanzada</h3>
+            <form method="get" action="/patients" class="space-y-4">
+                <div class="flex flex-col md:flex-row gap-4">
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Buscar paciente</label>
+                        <div class="relative">
+                            <input 
+                                type="text" 
+                                name="q" 
+                                value="<?= e($query ?? '') ?>" 
+                                placeholder="Nombre, ID, email o teléfono..." 
+                                class="w-full border border-gray-300 rounded-lg px-4 py-2 pl-10 focus:ring-2 focus:ring-shalom-primary focus:border-shalom-primary"
+                            >
+                            <div class="absolute left-3 top-2.5">
+                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-end gap-2">
+                        <button type="submit" class="px-6 py-2 bg-shalom-primary text-white rounded-lg hover:bg-shalom-dark transition-colors">
+                            Buscar
+                        </button>
+                        <?php if (!empty($query)): ?>
+                        <a href="/patients" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                            Limpiar
+                        </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                
+                <!-- Quick Filters -->
+                <div class="flex flex-wrap gap-2">
+                    <span class="text-sm text-gray-600">Filtros rápidos:</span>
+                    <button onclick="filterBy('recent')" class="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors">
+                        Recientes
+                    </button>
+                    <button onclick="filterBy('active')" class="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors">
+                        Activos
+                    </button>
+                    <button onclick="filterBy('today')" class="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors">
+                        Visitas hoy
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 

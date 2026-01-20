@@ -13,7 +13,7 @@ $isEdit = !empty($patient['id']);
     'isEdit' => $isEdit,
     'action' => $action ?? '/patients',
     'method' => $method ?? 'POST',
-]), ENT_QUOTES, 'UTF-8') ?>)" @submit.prevent="submitForm()" x-init="console.log('Form initialized!', $data)">
+]), ENT_QUOTES, 'UTF-8') ?>)" @submit.prevent="submitForm($event)" x-init="console.log('Form initialized!', $data)">
     <?= csrf_field() ?>
     <?php if (!empty($method) && strtoupper($method) !== 'POST'): ?>
         <input type="hidden" name="_method" value="<?= e($method) ?>">
@@ -728,6 +728,7 @@ function patientForm(config) {
                     console.error('Full response:', text);
                     this.isSubmitting = false;
                     this.showToast('Error del servidor. Intente nuevamente.', 'error');
+                    formElement.submit();
                     return;
                 }
 
